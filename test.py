@@ -11,25 +11,57 @@ import subprocess
 import traceback
 import os
 from werkzeug.utils import secure_filename
-
+from google.cloud import storage
+import tempfile
+import logging
 
 # Initialize the Flask application
 flask_app = Flask(__name__)
 
-# Initialize the FaceAnalysis application
-face_analysis_app = FaceAnalysis(name='buffalo_l')
-# for cpu use change on future
+# Initialize the storage client
+storage_client = storage.Client()
+
+# Define the download_blob function
+def download_blob(bucket_name, source_blob_name, destination_file_name):
+    """Downloads a blob from the bucket."""
+    logging.info(f"Starting download of '{source_blob_name}' from bucket '{bucket_name}' to '{destination_file_name}'")
+    bucket = storage_client.bucket(bucket_name)
+    blob = bucket.blob(source_blob_name)
+    blob.download_to_filename(destination_file_name)
+    logging.info(f"Finished download of '{source_blob_name}'")
+
+# Define the bucket name and model names
+bucket_name = 'inswapper'
+inswapper_model_blob_name = 'inswapper_128.onnx'
+gfpgan_model_blob_name = 'GFPGANv1.4.pth'
+gfpgan_weights_blob_names = ['gfpgan/weights/parsing_parsenet.pth', 'gfpgan/weights/detection_Resnet50_Final.pth']
+
+# Define the destination paths for the models
+inswapper_model_path = tempfile.NamedTemporaryFile(suffix='.onnx', delete=False).name
+gfpgan_model_path = tempfile.NamedTemporaryFile(suffix='.pth', delete=False).name
+gfpgan_weights_dir = tempfile.mkdtemp()
+os.makedirs(os.path.join(gfpgan_weights_dir, 'weights'), exist_ok=True)
+
+# Download the model files from GCS to the local filesystem
+download_blob(bucket_name, inswapper_model_blob_name, inswapper_model_path)
+download_blob(bucket_name, gfpgan_model_blob_name, gfpgan_model_path)
+for weight_blob_name in gfpgan_weights_blob_names:
+    weight_name = os.path.basename(weight_blob_name)
+    weight_path = os.path.join(gfpgan_weights_dir, 'weights', weight_name)
+    download_blob(bucket_name, weight_blob_name, weight_path)
+
+# Initialize the FaceAnalysis application with the downloaded model
+face_analysis_app = FaceAnalysis(name='buffalo_l', root=os.path.dirname(inswapper_model_path))
 face_analysis_app.prepare(ctx_id=-1, det_size=(640, 640))
 
-# Initialize GFPGAN for face restoration
+# Initialize GFPGAN for face restoration with the downloaded model file
 gfpgan = GFPGANer(
-    model_path='./venv/insightface/pretrained_models/GFPGANv1.4.pth',
+    model_path=gfpgan_model_path,
     upscale=2,  # Change the upscale factor based on your requirements
     arch='clean',
     channel_multiplier=2,
     bg_upsampler=None
 )
-
 # check if face exists on users image
 @flask_app.route('/detect-face', methods=['POST'])
 def detect_face():
@@ -90,8 +122,8 @@ def swap_face():
                 }
             }), 400
 
-        # Initialize the face swapper model
-        swapper = insightface.model_zoo.get_model('inswapper_128.onnx', download=False, download_zip=False)
+         # Load the face swapper model from the downloaded path
+        swapper = insightface.model_zoo.get_model(str(inswapper_model_path), download=False, download_zip=False)
 
         # Swap the face from source image onto the target image
         swapped_img = swapper.get(target_img, target_faces[0], source_faces[0], paste_back=True)
