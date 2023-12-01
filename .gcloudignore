@@ -1,0 +1,16 @@
+.gcloudignore
+.git
+.gitignore
+
+# Ignore Python byte-compiled files.
+
+**pycache**/
+
+# Ignore specific large files or directories that are stored in GCS and not required in the source upload.
+
+inswapper_128.onnx
+GFPGANv1.4.pth
+
+# Ignore the entire directory.
+
+INSIGHTFACE/gfpgan/

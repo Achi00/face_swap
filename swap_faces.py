@@ -11,24 +11,48 @@ import subprocess
 import traceback
 import os
 from werkzeug.utils import secure_filename
+from google.cloud import storage
+import tempfile
+import logging
+
+# Environment variables
+BUCKET_NAME = os.environ.get('BUCKET_NAME', 'face-analysis-bucket')
+
+# Initialize logging
+logging.basicConfig(level=logging.INFO)
+
+# Function to load model from Google Cloud Storage
+
+def load_model_from_gcs(bucket_name, blob_name):
+    client = storage.Client()
+    bucket = client.bucket(bucket_name)
+    blob = bucket.blob(blob_name)
+    temp_model_file = tempfile.NamedTemporaryFile(delete=False)
+    temp_model_file.write(blob.download_as_bytes())
+    temp_model_file.close()
+    logging.info(f"Downloaded {blob_name} to {temp_model_file.name}")
+    return temp_model_file.name
 
 
-# Initialize the Flask application
+# Flask application initialization
 flask_app = Flask(__name__)
 
-# Initialize the FaceAnalysis application
-face_analysis_app = FaceAnalysis(name='buffalo_l')
-# for cpu use change on future
-face_analysis_app.prepare(ctx_id=-1, det_size=(640, 640))
+bucket_name = 'face-analysis-bucket'
 
-# Initialize GFPGAN for face restoration
-gfpgan = GFPGANer(
-    model_path='./venv/insightface/pretrained_models/GFPGANv1.4.pth',
-    upscale=2,  # Change the upscale factor based on your requirements
-    arch='clean',
-    channel_multiplier=2,
-    bg_upsampler=None
-)
+# Load models from Google Cloud Storage
+inswapper_model_path = load_model_from_gcs(bucket_name, 'inswapper_128.onnx')
+gfpgan_model_path = load_model_from_gcs(bucket_name, 'GFPGANv1.4.pth')
+gfpgan_weights_blob_names = ['gfpgan/weights/parsing_parsenet.pth', 'gfpgan/weights/detection_Resnet50_Final.pth']
+gfpgan_weights_dir = tempfile.mkdtemp()
+for weight_blob_name in gfpgan_weights_blob_names:
+    weight_path = os.path.join(gfpgan_weights_dir, os.path.basename(weight_blob_name))
+    if not os.path.exists(weight_path):
+        weight_path = load_model_from_gcs(weight_blob_name)
+
+# Initialize InsightFace and GFPGAN
+face_analysis_app = FaceAnalysis(name='buffalo_l', root=os.path.dirname(inswapper_model_path))
+face_analysis_app.prepare(ctx_id=-1, det_size=(640, 640))
+gfpgan = GFPGANer(model_path=gfpgan_model_path, upscale=2, arch='clean', channel_multiplier=2, bg_upsampler=None)
 
 # check if face exists on users image
 @flask_app.route('/detect-face', methods=['POST'])
@@ -90,8 +114,8 @@ def swap_face():
                 }
             }), 400
 
-        # Initialize the face swapper model
-        swapper = insightface.model_zoo.get_model('inswapper_128.onnx', download=False, download_zip=False)
+         # Load the face swapper model from the downloaded path
+        swapper = insightface.model_zoo.get_model(str(inswapper_model_path), download=False, download_zip=False)
 
         # Swap the face from source image onto the target image
         swapped_img = swapper.get(target_img, target_faces[0], source_faces[0], paste_back=True)
@@ -142,5 +166,10 @@ def enhance_face():
 
 
 if __name__ == '__main__':
-    flask_app.run(debug=True, host='0.0.0.0', port=5000)  # Comment out or remove this line
-    # pass  # Or remove the entire if block
+    # flask_app.run(debug=True, host='0.0.0.0', port=5000)
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False') == 'True'
+    
+    # Default to port 8080, which is used by many cloud providers
+    port = int(os.environ.get('PORT', 8080))
+
+    flask_app.run(debug=debug_mode, host='0.0.0.0', port=port)

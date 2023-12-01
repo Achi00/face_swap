@@ -4,3 +4,4 @@ entrypoint: gunicorn -b :$PORT swap_faces:flask_app
 
 env_variables:
   FLASK_ENV: "production"
+  BUCKET_NAME: "face-analysis-bucket"
