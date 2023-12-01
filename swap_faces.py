@@ -22,17 +22,30 @@ BUCKET_NAME = os.environ.get('BUCKET_NAME', 'face-analysis-bucket')
 logging.basicConfig(level=logging.INFO)
 
 # Function to load model from Google Cloud Storage
+MODEL_STORE_DIR = "model_store"  # Define a directory to store models
 
 def load_model_from_gcs(bucket_name, blob_name):
     client = storage.Client()
     bucket = client.bucket(bucket_name)
     blob = bucket.blob(blob_name)
-    temp_model_file = tempfile.NamedTemporaryFile(delete=False)
-    temp_model_file.write(blob.download_as_bytes())
-    temp_model_file.close()
-    logging.info(f"Downloaded {blob_name} to {temp_model_file.name}")
-    return temp_model_file.name
 
+    # Create the model store directory if it does not exist
+    if not os.path.exists(MODEL_STORE_DIR):
+        os.makedirs(MODEL_STORE_DIR)
+
+    # Construct the path to save the file
+    local_path = os.path.join(MODEL_STORE_DIR, blob_name.replace('/', '_'))
+
+    # Only download if the file does not exist
+    if not os.path.exists(local_path):
+        logging.info(f"Model {blob_name} not found locally. Downloading from GCS...")
+        with open(local_path, 'wb') as file_obj:
+            blob.download_to_file(file_obj)
+        logging.info(f"Downloaded {blob_name} to {local_path}")
+    else:
+        logging.info(f"Model {blob_name} found locally. Using cached version at {local_path}")
+
+    return local_path
 
 # Flask application initialization
 flask_app = Flask(__name__)
@@ -42,12 +55,6 @@ bucket_name = 'face-analysis-bucket'
 # Load models from Google Cloud Storage
 inswapper_model_path = load_model_from_gcs(bucket_name, 'inswapper_128.onnx')
 gfpgan_model_path = load_model_from_gcs(bucket_name, 'GFPGANv1.4.pth')
-gfpgan_weights_blob_names = ['gfpgan/weights/parsing_parsenet.pth', 'gfpgan/weights/detection_Resnet50_Final.pth']
-gfpgan_weights_dir = tempfile.mkdtemp()
-for weight_blob_name in gfpgan_weights_blob_names:
-    weight_path = os.path.join(gfpgan_weights_dir, os.path.basename(weight_blob_name))
-    if not os.path.exists(weight_path):
-        weight_path = load_model_from_gcs(weight_blob_name)
 
 # Initialize InsightFace and GFPGAN
 face_analysis_app = FaceAnalysis(name='buffalo_l', root=os.path.dirname(inswapper_model_path))
@@ -115,7 +122,11 @@ def swap_face():
             }), 400
 
          # Load the face swapper model from the downloaded path
-        swapper = insightface.model_zoo.get_model(str(inswapper_model_path), download=False, download_zip=False)
+        try:
+            swapper = insightface.model_zoo.get_model(str(inswapper_model_path), download=False, download_zip=False)
+            assert swapper is not None, "Model could not be loaded"
+        except Exception as e:
+            print(f"An error occurred while loading the model: {e}")
 
         # Swap the face from source image onto the target image
         swapped_img = swapper.get(target_img, target_faces[0], source_faces[0], paste_back=True)
@@ -167,9 +178,4 @@ def enhance_face():
 
 if __name__ == '__main__':
     # flask_app.run(debug=True, host='0.0.0.0', port=5000)
-    debug_mode = os.environ.get('FLASK_DEBUG', 'False') == 'True'
-    
-    # Default to port 8080, which is used by many cloud providers
-    port = int(os.environ.get('PORT', 8080))
-
-    flask_app.run(debug=debug_mode, host='0.0.0.0', port=port)
+    flask_app.run(debug=False, host='127.0.0.1', port=5000)

@@ -14,3 +14,7 @@ GFPGANv1.4.pth
 # Ignore the entire directory.
 
 INSIGHTFACE/gfpgan/
+
+# Ignore the virtual environment directory.
+
+venv/
