@@ -178,4 +178,4 @@ def enhance_face():
 
 if __name__ == '__main__':
     # flask_app.run(debug=True, host='0.0.0.0', port=5000)
-    flask_app.run(debug=False, host='127.0.0.1', port=5000)
+    flask_app.run(debug=False, host='0.0.0.0', port=5000)
