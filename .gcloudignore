@@ -8,13 +8,116 @@
 
 # Ignore specific large files or directories that are stored in GCS and not required in the source upload.
 
-inswapper_128.onnx
-GFPGANv1.4.pth
+# inswapper_128.onnx
+# GFPGANv1.4.pth
 
 # Ignore the entire directory.
 
-INSIGHTFACE/gfpgan/
+# INSIGHTFACE/gfpgan/
 
 # Ignore the virtual environment directory.
 
+# Byte-compiled / optimized / DLL files
+
+**pycache**/
+_.py[cod]
+_$py.class
+
+# C extensions
+
+\*.so
+
+# Distribution / packaging
+
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+_.egg-info/
+.installed.cfg
+_.egg
+
+# PyInstaller
+
+# Usually used for creating executables, not needed on cloud
+
+_.manifest
+_.spec
+
+# Jupyter Notebook
+
+.ipynb_checkpoints
+
+# pyenv
+
+.python-version
+
+# pipenv
+
+Pipfile.lock
+
+# pytest
+
+.cache
+.pytest_cache/
+
+# mypy
+
+.mypy_cache/
+
+# IDE specific files
+
+# VSCode
+
+.vscode/
+
+# PyCharm
+
+.idea/
+
+# Spyder
+
+.spyderproject
+.spyproject
+
+# Sublime Text
+
+.sublime-workspace
+
+# Operating system files
+
+.DS_Store
+ehthumbs.db
+Icon?
+Thumbs.db
+
+# Logs and databases
+
+_.log
+_.sql
+\*.sqlite
+
+# Environment variables and configuration files
+
+.env
+.secret
+
+# Virtual environments
+
 venv/
+ENV/
+env/
+env.bak/
+venv.bak/

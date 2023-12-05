@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+model_store
+model_store/*
+
 inswapper_128.onnx
 
 INSIGHTFACE/gfpgan/*

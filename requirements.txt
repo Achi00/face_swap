@@ -16,7 +16,7 @@ easydict==1.11
 facexlib==0.3.0
 filelock==3.13.1
 filterpy==1.4.5
-Flask==3.0.0
+Flask==2.1.0
 flatbuffers==23.5.26
 fonttools==4.44.0
 fsspec==2023.10.0
@@ -88,12 +88,9 @@ threadpoolctl==3.2.0
 tifffile==2023.9.26
 tomli==2.0.1
 torch==2.1.1
+torchaudio==2.1.1
 torchvision==0.16.1
 tqdm==4.66.1
 typing_extensions==4.8.0
 uritemplate==4.1.1
-urllib3==2.0.7
-wcwidth==0.2.9
-Werkzeug==3.0.1
-yapf==0.40.2
-zipp==3.17.0
+werkzeug==2.2.2

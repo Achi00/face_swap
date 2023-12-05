@@ -1,7 +1,10 @@
 runtime: python39
 
-entrypoint: gunicorn -b :$PORT swap_faces:flask_app
+entrypoint: gunicorn -b :$PORT swap_faces:app
 
-env_variables:
-  FLASK_ENV: "production"
-  BUCKET_NAME: "face-analysis-bucket"
+service: service-1
+
+manual_scaling:
+  instances: 2 # Start with 2 B2 instances
+
+instance_class: B2 # Specify B2 instance class
