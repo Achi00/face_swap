@@ -1,7 +1,28 @@
-runtime: python39
-
-entrypoint: gunicorn -b :$PORT swap_faces:flask_app
-
-env_variables:
-  FLASK_ENV: "production"
-  BUCKET_NAME: "face-analysis-bucket"
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: your-app-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: your-app
+  template:
+    metadata:
+      labels:
+        app: your-app
+    spec:
+      containers:
+        - name: your-app
+          image: gcr.io/your-gcp-project/your-app-name
+          ports:
+            - containerPort: 5000
+      # Mount the Google credentials file
+      volumes:
+        - name: google-cloud-key
+          secret:
+            secretName: google-cloud-key
+      volumeMounts:
+        - name: google-cloud-key
+          mountPath: /usr/src/app/google.json
+          subPath: google.json

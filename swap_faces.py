@@ -15,6 +15,7 @@ from google.cloud import storage
 import tempfile
 import logging
 
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'C:\\Users\\Achi\\Desktop\\insightface\\google.json'
 # Environment variables
 BUCKET_NAME = os.environ.get('BUCKET_NAME', 'face-analysis-bucket')
 
